@@ -10,6 +10,7 @@ from app.models.user import SubscriptionUserResponse, UserResponse
 from app.subscription.share import encode_title, generate_subscription
 from app.templates import render_template
 from config import (
+    SUB_ANNOUNCE,
     SUB_PROFILE_TITLE,
     SUB_SUPPORT_URL,
     SUB_UPDATE_INTERVAL,
@@ -68,6 +69,7 @@ def user_subscription(
 
     crud.update_user_sub(db, dbuser, user_agent)
     response_headers = {
+        "announce": SUB_ANNOUNCE,
         "content-disposition": f'attachment; filename="{user.username}"',
         "profile-web-page-url": str(request.url),
         "support-url": SUB_SUPPORT_URL,
@@ -181,6 +183,7 @@ def user_subscription_with_client_type(
     user: UserResponse = UserResponse.model_validate(dbuser)
 
     response_headers = {
+        "announce": SUB_ANNOUNCE,
         "content-disposition": f'attachment; filename="{user.username}"',
         "profile-web-page-url": str(request.url),
         "support-url": SUB_SUPPORT_URL,
