@@ -75,6 +75,8 @@ class User(BaseModel):
 
     auto_delete_in_days: Optional[int] = Field(None, nullable=True)
 
+    hwid_device_limit: Optional[int] = Field(None, nullable=True)
+
     next_plan: Optional[NextPlanModel] = Field(None, nullable=True)
 
     @field_validator('data_limit', mode='before')

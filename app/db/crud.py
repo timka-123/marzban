@@ -26,6 +26,7 @@ from app.db.models import (
     ProxyTypes,
     System,
     User,
+    UserDevice,
     UserTemplate,
     UserUsageResetLogs,
 )
@@ -390,6 +391,7 @@ def create_user(db: Session, user: UserCreate, admin: Admin = None) -> User:
         on_hold_expire_duration=(user.on_hold_expire_duration or None),
         on_hold_timeout=(user.on_hold_timeout or None),
         auto_delete_in_days=user.auto_delete_in_days,
+        hwid_device_limit=user.hwid_device_limit,
         next_plan=NextPlan(
             data_limit=user.next_plan.data_limit,
             expire=user.next_plan.expire,
@@ -505,6 +507,9 @@ def update_user(db: Session, dbuser: User, modify: UserModify) -> User:
 
     if modify.note is not None:
         dbuser.note = modify.note or None
+
+    if modify.hwid_device_limit is not None:
+        dbuser.hwid_device_limit = modify.hwid_device_limit or None
 
     if modify.data_limit_reset_strategy is not None:
         dbuser.data_limit_reset_strategy = modify.data_limit_reset_strategy.value
@@ -1498,3 +1503,120 @@ def count_online_users(db: Session, hours: int = 24):
     query = db.query(func.count(User.id)).filter(User.online_at.isnot(
         None), User.online_at >= twenty_four_hours_ago)
     return query.scalar()
+
+
+def get_user_device(db: Session, hwid) -> UserDevice | None:
+    """
+    Get user device by HWID only (may match any user).
+
+    Args:
+        db (Session): The database session
+        hwid (_type_): User's HWID
+
+    Returns:
+        UserDevice | None: The UserDevice object
+    """
+    return db.query(UserDevice).filter(UserDevice.hwid == hwid).first()
+
+
+def get_user_device_for_user(db: Session, user_id: int, hwid: str) -> UserDevice | None:
+    """
+    Get device by HWID scoped to a specific user.
+
+    Args:
+        db (Session): The database session
+        user_id (int): User's ID
+        hwid (str): Hardware ID
+
+    Returns:
+        UserDevice | None: The UserDevice object
+    """
+    return db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+
+
+def count_user_devices(db: Session, user_id) -> int:
+    """Get count of user devices
+
+    Args:
+        db (Session): The database session
+        user_id (_type_): User's ID
+
+    Returns:
+        int: Count of user's devices
+    """
+    return db.query(UserDevice).filter(UserDevice.user_id == user_id).count()
+
+
+def insert_user_device(
+    db: Session,
+    user_id: int,
+    hwid: str,
+    platform: str,
+    os_version: str,
+    device_model: str,
+    user_agent: str,
+) -> UserDevice:
+    device = UserDevice(
+        hwid=hwid,
+        user_id=user_id,
+        platform=platform or None,
+        os_version=os_version or None,
+        device_model=device_model or None,
+        user_agent=user_agent or None,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return device
+
+
+def upsert_user_device(
+    db: Session,
+    user_id: int,
+    hwid: str,
+    platform: str = None,
+    os_version: str = None,
+    device_model: str = None,
+    user_agent: str = None,
+) -> UserDevice:
+    device = db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+    if device:
+        device.platform = platform or device.platform
+        device.os_version = os_version or device.os_version
+        device.device_model = device_model or device.device_model
+        device.user_agent = user_agent or device.user_agent
+        device.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(device)
+        return device
+    return insert_user_device(db, user_id, hwid, platform, os_version, device_model, user_agent)
+
+
+def get_user_devices(db: Session, user_id: int) -> list[UserDevice]:
+    return db.query(UserDevice).filter(UserDevice.user_id == user_id).all()
+
+
+def delete_user_device(db: Session, user_id: int, hwid: str) -> bool:
+    device = db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+    if not device:
+        return False
+    db.delete(device)
+    db.commit()
+    return True
+
+
+def delete_all_user_devices(db: Session, user_id: int) -> int:
+    count = db.query(UserDevice).filter(UserDevice.user_id == user_id).delete()
+    db.commit()
+    return count
