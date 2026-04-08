@@ -1,5 +1,7 @@
+import base64
 import re
 from distutils.version import LooseVersion
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends, Header, Path, Request, Response
 from fastapi.responses import HTMLResponse
@@ -10,6 +12,10 @@ from app.models.user import SubscriptionUserResponse, UserResponse
 from app.subscription.share import encode_title, generate_subscription
 from app.templates import render_template
 from config import (
+    HWID_DEVICE_LIMIT_ENABLED,
+    HWID_FALLBACK_DEVICE_LIMIT,
+    HWID_MAX_DEVICES_ANNOUNCE,
+    SUB_ANNOUNCE,
     SUB_ANNOUNCE,
     SUB_PROFILE_TITLE,
     SUB_SUPPORT_URL,
@@ -22,7 +28,6 @@ from config import (
     USE_CUSTOM_JSON_FOR_V2RAYN,
     USE_CUSTOM_JSON_FOR_V2RAYNG,
     XRAY_SUBSCRIPTION_PATH,
-    SUB_ANNOUNCE
 )
 
 client_config = {
@@ -36,6 +41,67 @@ client_config = {
 }
 
 router = APIRouter(tags=['Subscription'], prefix=f'/{XRAY_SUBSCRIPTION_PATH}')
+
+
+def check_hwid(
+    db: Session,
+    dbuser,
+    hwid: Optional[str],
+    platform: Optional[str],
+    os_version: Optional[str],
+    device_model: Optional[str],
+    user_agent: Optional[str],
+) -> Tuple[bool, str]:
+    """
+    Check whether HWID device limit allows this request.
+
+    Returns (allowed, reason) where reason is one of:
+      'disabled'          — HWID enforcement is off globally
+      'bypass'            — per-user limit is 0 (always allow)
+      'no_hwid'           — client did not send X-HWID header
+      'known_device'      — device already registered, allow
+      'new_device'        — new device registered, allow
+      'limit_reached'     — device limit exceeded, block
+    """
+    if not HWID_DEVICE_LIMIT_ENABLED:
+        return True, 'disabled'
+
+    if dbuser.hwid_device_limit == 0:
+        if hwid:
+            crud.upsert_user_device(db, dbuser.id, hwid, platform, os_version, device_model, user_agent)
+        return True, 'bypass'
+
+    if not hwid:
+        return False, 'no_hwid'
+
+    existing = crud.get_user_device_for_user(db, dbuser.id, hwid)
+    if existing:
+        crud.upsert_user_device(db, dbuser.id, hwid, platform, os_version, device_model, user_agent)
+        return True, 'known_device'
+
+    limit = dbuser.hwid_device_limit if dbuser.hwid_device_limit is not None else HWID_FALLBACK_DEVICE_LIMIT
+    count = crud.count_user_devices(db, dbuser.id)
+    if count >= limit:
+        return False, 'limit_reached'
+
+    crud.insert_user_device(db, dbuser.id, hwid, platform, os_version, device_model, user_agent)
+    return True, 'new_device'
+
+
+def build_hwid_headers(allowed: bool, reason: str) -> dict:
+    headers = {}
+    if HWID_DEVICE_LIMIT_ENABLED:
+        headers['x-hwid-active'] = 'true'
+    if not allowed:
+        if reason == 'no_hwid':
+            headers['x-hwid-not-supported'] = 'true'
+        elif reason == 'limit_reached':
+            headers['x-hwid-max-devices-reached'] = 'true'
+            if HWID_MAX_DEVICES_ANNOUNCE:
+                headers['announce'] = base64.b64encode(
+                    HWID_MAX_DEVICES_ANNOUNCE.encode()
+                ).decode()
+    return headers
 
 
 def get_subscription_user_info(user: UserResponse) -> dict:
@@ -54,7 +120,11 @@ def user_subscription(
     request: Request,
     db: Session = Depends(get_db),
     dbuser: UserResponse = Depends(get_validated_sub),
-    user_agent: str = Header(default="")
+    user_agent: str = Header(default=""),
+    x_hwid: Optional[str] = Header(default=None, alias="X-HWID"),
+    x_device_os: Optional[str] = Header(default=None, alias="X-Device-OS"),
+    x_ver_os: Optional[str] = Header(default=None, alias="X-Ver-OS"),
+    x_device_model: Optional[str] = Header(default=None, alias="X-Device-Model"),
 ):
     """Provides a subscription link based on the user agent (Clash, V2Ray, etc.)."""
     user: UserResponse = UserResponse.model_validate(dbuser)
@@ -68,6 +138,11 @@ def user_subscription(
             )
         )
 
+    allowed, reason = check_hwid(db, dbuser, x_hwid, x_device_os, x_ver_os, x_device_model, user_agent)
+    hwid_headers = build_hwid_headers(allowed, reason)
+    if not allowed:
+        return Response(content="", media_type="text/plain", headers=hwid_headers)
+
     crud.update_user_sub(db, dbuser, user_agent)
     response_headers = {
         "announce": SUB_ANNOUNCE,
@@ -80,7 +155,8 @@ def user_subscription(
         "subscription-userinfo": "; ".join(
             f"{key}={val}"
             for key, val in get_subscription_user_info(user).items()
-        )
+        ),
+        **hwid_headers,
     }
 
     if re.match(r'^([Cc]lash-verge|[Cc]lash[-\.]?[Mm]eta|[Ff][Ll][Cc]lash|[Mm]ihomo)', user_agent):
@@ -179,10 +255,19 @@ def user_subscription_with_client_type(
     dbuser: UserResponse = Depends(get_validated_sub),
     client_type: str = Path(..., regex="sing-box|clash-meta|clash|outline|v2ray|v2ray-json"),
     db: Session = Depends(get_db),
-    user_agent: str = Header(default="")
+    user_agent: str = Header(default=""),
+    x_hwid: Optional[str] = Header(default=None, alias="X-HWID"),
+    x_device_os: Optional[str] = Header(default=None, alias="X-Device-OS"),
+    x_ver_os: Optional[str] = Header(default=None, alias="X-Ver-OS"),
+    x_device_model: Optional[str] = Header(default=None, alias="X-Device-Model"),
 ):
     """Provides a subscription link based on the specified client type (e.g., Clash, V2Ray)."""
     user: UserResponse = UserResponse.model_validate(dbuser)
+
+    allowed, reason = check_hwid(db, dbuser, x_hwid, x_device_os, x_ver_os, x_device_model, user_agent)
+    hwid_headers = build_hwid_headers(allowed, reason)
+    if not allowed:
+        return Response(content="", media_type="text/plain", headers=hwid_headers)
 
     response_headers = {
         "announce": SUB_ANNOUNCE,
@@ -195,7 +280,8 @@ def user_subscription_with_client_type(
         "subscription-userinfo": "; ".join(
             f"{key}={val}"
             for key, val in get_subscription_user_info(user).items()
-        )
+        ),
+        **hwid_headers,
     }
 
     config = client_config.get(client_type)

@@ -135,6 +135,11 @@ NOTIFY_DAYS_LEFT = config(
 
 DISABLE_RECORDING_NODE_USAGE = config("DISABLE_RECORDING_NODE_USAGE", cast=bool, default=False)
 
+# HWID Setup
+HWID_DEVICE_LIMIT_ENABLED = config("HWID_DEVICE_LIMIT_ENABLED", cast=bool, default=False)
+HWID_FALLBACK_DEVICE_LIMIT = config("HWID_FALLBACK_DEVICE_LIMIT", cast=int, default=999)
+HWID_MAX_DEVICES_ANNOUNCE = config("HWID_MAX_DEVICES_ANNOUNCE", default="Device limit reached")
+
 # headers: profile-update-interval, support-url, profile-title, announce
 SUB_UPDATE_INTERVAL = config("SUB_UPDATE_INTERVAL", default="12")
 SUB_SUPPORT_URL = config("SUB_SUPPORT_URL", default="https://t.me/")

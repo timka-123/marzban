@@ -86,6 +86,8 @@ class User(Base):
     online_at = Column(DateTime, nullable=True, default=None)
     on_hold_expire_duration = Column(BigInteger, nullable=True, default=None)
     on_hold_timeout = Column(DateTime, nullable=True, default=None)
+    
+    hwid_device_limit = Column(Integer, nullable=True)
 
     # * Positive values: User will be deleted after the value of this field in days automatically.
     # * Negative values: User won't be deleted automatically at all.
@@ -158,6 +160,18 @@ template_inbounds_association = Table(
     Column("user_template_id", ForeignKey("user_templates.id")),
     Column("inbound_tag", ForeignKey("inbounds.tag")),
 )
+
+
+class UserDevice(Base):
+    __tablename__ = "user_devices"
+    hwid = Column(String(128), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    platform = Column(String(64), nullable=True)
+    os_version = Column(String(64), nullable=True)
+    device_model = Column(String(128), nullable=True)
+    user_agent = Column(String(256), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class NextPlan(Base):
