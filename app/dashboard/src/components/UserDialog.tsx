@@ -1,6 +1,7 @@
 import {
   Alert,
   AlertIcon,
+  Badge,
   Box,
   Button,
   Collapse,
@@ -23,9 +24,16 @@ import {
   Select,
   Spinner,
   Switch,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
   Text,
   Textarea,
+  Th,
+  Thead,
   Tooltip,
+  Tr,
   VStack,
   chakra,
   useColorMode,
@@ -33,7 +41,9 @@ import {
 } from "@chakra-ui/react";
 import {
   ChartPieIcon,
+  DevicePhoneMobileIcon,
   PencilIcon,
+  TrashIcon,
   UserPlusIcon,
 } from "@heroicons/react/24/outline";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +60,7 @@ import {
   ProxyType,
   User,
   UserCreate,
+  UserDevice,
   UserInbounds,
 } from "types/User";
 import { relativeExpiryDate } from "utils/dateFormatter";
@@ -83,6 +94,20 @@ const UserUsageIcon = chakra(ChartPieIcon, {
   },
 });
 
+const DevicesIcon = chakra(DevicePhoneMobileIcon, {
+  baseStyle: {
+    w: 5,
+    h: 5,
+  },
+});
+
+const TrashIconSmall = chakra(TrashIcon, {
+  baseStyle: {
+    w: 4,
+    h: 4,
+  },
+});
+
 export type UserDialogProps = {};
 
 export type FormType = Pick<UserCreate, keyof UserCreate> & {
@@ -98,6 +123,7 @@ const formatUser = (user: User): FormType => {
     on_hold_expire_duration: user.on_hold_expire_duration
       ? Number(user.on_hold_expire_duration / (24 * 60 * 60))
       : user.on_hold_expire_duration,
+    hwid_device_limit: user.hwid_device_limit ?? null,
     selected_proxies: Object.keys(user.proxies) as ProxyKeys,
   };
 };
@@ -115,6 +141,7 @@ const getDefaultValues = (): FormType => {
     data_limit_reset_strategy: "no_reset",
     status: "active",
     on_hold_expire_duration: null,
+    hwid_device_limit: null,
     note: "",
     inbounds,
     proxies: {
@@ -149,6 +176,7 @@ const baseSchema = {
     message: "userDialog.selectOneProtocol",
   }),
   note: z.string().nullable(),
+  hwid_device_limit: z.coerce.number().int().min(0).nullable().optional(),
   proxies: z
     .record(z.string(), z.record(z.string(), z.any()))
     .transform((ins) => {
@@ -223,6 +251,9 @@ export const UserDialog: FC<UserDialogProps> = () => {
     onEditingUser,
     createUser,
     onDeletingUser,
+    fetchUserDevices,
+    deleteUserDevice,
+    deleteAllUserDevices,
   } = useDashboard();
   const isEditing = !!editingUser;
   const isOpen = isCreatingNewUser || isEditing;
@@ -236,6 +267,34 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const [usageVisible, setUsageVisible] = useState(false);
   const handleUsageToggle = () => {
     setUsageVisible((current) => !current);
+  };
+
+  const [devicesVisible, setDevicesVisible] = useState(false);
+  const [devices, setDevices] = useState<UserDevice[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+
+  const handleDevicesToggle = () => {
+    if (!devicesVisible && editingUser) {
+      setDevicesLoading(true);
+      fetchUserDevices(editingUser)
+        .then((d) => setDevices(d))
+        .finally(() => setDevicesLoading(false));
+    }
+    setDevicesVisible((current) => !current);
+  };
+
+  const handleDeleteDevice = (hwid: string) => {
+    if (!editingUser) return;
+    deleteUserDevice(editingUser, hwid).then(() => {
+      setDevices((prev) => prev.filter((d) => d.hwid !== hwid));
+    });
+  };
+
+  const handleClearDevices = () => {
+    if (!editingUser) return;
+    deleteAllUserDevices(editingUser).then(() => {
+      setDevices([]);
+    });
   };
 
   const form = useForm<FormType>({
@@ -350,6 +409,8 @@ export const UserDialog: FC<UserDialogProps> = () => {
     setError(null);
     setUsageVisible(false);
     setUsageFilter("1m");
+    setDevicesVisible(false);
+    setDevices([]);
   };
 
   const handleResetUsage = () => {
@@ -693,6 +754,22 @@ export const UserDialog: FC<UserDialogProps> = () => {
                         )}
                       </FormControl>
 
+                      <FormControl mb={"10px"}>
+                        <FormLabel>{t("userDialog.hwidDeviceLimit")}</FormLabel>
+                        <Input
+                          endAdornment={t("userDialog.devices")}
+                          type="number"
+                          size="sm"
+                          borderRadius="6px"
+                          placeholder="∞"
+                          disabled={disabled}
+                          {...form.register("hwid_device_limit")}
+                        />
+                        <FormHelperText>
+                          {t("userDialog.hwidDeviceLimitHint")}
+                        </FormHelperText>
+                      </FormControl>
+
                       <FormControl
                         mb={"10px"}
                         isInvalid={!!form.formState.errors.note}
@@ -783,6 +860,102 @@ export const UserDialog: FC<UserDialogProps> = () => {
                     </VStack>
                   </GridItem>
                 )}
+                {isEditing && devicesVisible && (
+                  <GridItem pt={4} colSpan={{ base: 1, md: 2 }}>
+                    <HStack justify="space-between" mb={2}>
+                      <Text fontWeight="semibold" fontSize="sm">
+                        {t("userDialog.hwidDevices")}
+                      </Text>
+                      <Button
+                        size="xs"
+                        colorScheme="red"
+                        variant="outline"
+                        leftIcon={<TrashIconSmall />}
+                        onClick={handleClearDevices}
+                        isDisabled={devices.length === 0}
+                      >
+                        {t("userDialog.clearDevices")}
+                      </Button>
+                    </HStack>
+                    {devicesLoading ? (
+                      <Flex justify="center" py={4}>
+                        <Spinner size="sm" />
+                      </Flex>
+                    ) : devices.length === 0 ? (
+                      <Text
+                        fontSize="sm"
+                        color="gray.500"
+                        textAlign="center"
+                        py={3}
+                      >
+                        {t("userDialog.noDevices")}
+                      </Text>
+                    ) : (
+                      <TableContainer
+                        borderWidth="1px"
+                        borderRadius="md"
+                        fontSize="xs"
+                      >
+                        <Table size="sm" variant="simple">
+                          <Thead>
+                            <Tr>
+                              <Th>HWID</Th>
+                              <Th>{t("userDialog.platform")}</Th>
+                              <Th>{t("userDialog.deviceModel")}</Th>
+                              <Th />
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {devices.map((device) => (
+                              <Tr key={device.hwid}>
+                                <Td>
+                                  <Tooltip label={device.hwid} placement="top">
+                                    <Badge
+                                      fontFamily="mono"
+                                      fontSize="2xs"
+                                      maxW="120px"
+                                      overflow="hidden"
+                                      textOverflow="ellipsis"
+                                      whiteSpace="nowrap"
+                                      display="block"
+                                    >
+                                      {device.hwid}
+                                    </Badge>
+                                  </Tooltip>
+                                </Td>
+                                <Td>
+                                  {device.platform ?? "—"}
+                                  {device.os_version
+                                    ? ` ${device.os_version}`
+                                    : ""}
+                                </Td>
+                                <Td>{device.device_model ?? "—"}</Td>
+                                <Td isNumeric>
+                                  <Tooltip
+                                    label={t("userDialog.deleteDevice")}
+                                    placement="top"
+                                  >
+                                    <IconButton
+                                      aria-label="delete device"
+                                      size="xs"
+                                      variant="ghost"
+                                      colorScheme="red"
+                                      onClick={() =>
+                                        handleDeleteDevice(device.hwid)
+                                      }
+                                    >
+                                      <TrashIconSmall />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </GridItem>
+                )}
               </Grid>
               {error && (
                 <Alert
@@ -833,6 +1006,18 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           onClick={handleUsageToggle}
                         >
                           <UserUsageIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip
+                        label={t("userDialog.hwidDevices")}
+                        placement="top"
+                      >
+                        <IconButton
+                          aria-label="devices"
+                          size="sm"
+                          onClick={handleDevicesToggle}
+                        >
+                          <DevicesIcon />
                         </IconButton>
                       </Tooltip>
                       <Button onClick={handleResetUsage} size="sm">

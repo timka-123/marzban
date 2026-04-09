@@ -1,6 +1,6 @@
 import { StatisticsQueryKey } from "components/Statistics";
 import { fetch } from "service/http";
-import { User, UserCreate } from "types/User";
+import { User, UserCreate, UserDevice } from "types/User";
 import { queryClient } from "utils/react-query";
 import { getUsersPerPageLimitSize } from "utils/userPreferenceStorage";
 import { create } from "zustand";
@@ -68,6 +68,9 @@ type DashboardStateType = {
   onShowingNodesUsage: (isShowingNodesUsage: boolean) => void;
   resetDataUsage: (user: User) => Promise<void>;
   revokeSubscription: (user: User) => Promise<void>;
+  fetchUserDevices: (user: User) => Promise<UserDevice[]>;
+  deleteUserDevice: (user: User, hwid: string) => Promise<void>;
+  deleteAllUserDevices: (user: User) => Promise<void>;
 };
 
 const fetchUsers = (query: FilterType): Promise<User[]> => {
@@ -209,6 +212,19 @@ export const useDashboard = create(
         set({ revokeSubscriptionUser: null, editingUser: user });
         get().refetchUsers();
       });
+    },
+    fetchUserDevices: (user: User) => {
+      return fetch(`/user/${user.username}/devices`, { method: "GET" }).then(
+        (data: { devices: UserDevice[]; total: number }) => data.devices
+      );
+    },
+    deleteUserDevice: (user: User, hwid: string) => {
+      return fetch(`/user/${user.username}/devices/${encodeURIComponent(hwid)}`, {
+        method: "DELETE",
+      });
+    },
+    deleteAllUserDevices: (user: User) => {
+      return fetch(`/user/${user.username}/devices`, { method: "DELETE" });
     },
   }))
 );
