@@ -2,6 +2,7 @@ import base64
 import re
 from distutils.version import LooseVersion
 from typing import Optional, Tuple
+import logging
 
 from fastapi import APIRouter, Depends, Header, Path, Request, Response
 from fastapi.responses import HTMLResponse
@@ -139,6 +140,7 @@ def user_subscription(
         )
 
     allowed, reason = check_hwid(db, dbuser, x_hwid, x_device_os, x_ver_os, x_device_model, user_agent)
+    logging.info(allowed, reason)
     hwid_headers = build_hwid_headers(allowed, reason)
     if not allowed:
         return Response(content="", media_type="text/plain", headers=hwid_headers)
@@ -266,6 +268,7 @@ def user_subscription_with_client_type(
 
     allowed, reason = check_hwid(db, dbuser, x_hwid, x_device_os, x_ver_os, x_device_model, user_agent)
     hwid_headers = build_hwid_headers(allowed, reason)
+    logging.info(allowed, reason)
     if not allowed:
         return Response(content="", media_type="text/plain", headers=hwid_headers)
 
