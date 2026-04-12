@@ -125,9 +125,9 @@ def user_subscription(
     dbuser: UserResponse = Depends(get_validated_sub),
     user_agent: str = Header(default=""),
     x_hwid: Optional[str] = Header(default=None, alias="x-hwid"),
-    x_device_os: Optional[str] = Header(default=None, alias="device-os"),
+    x_device_os: Optional[str] = Header(default=None, alias="x-device-os"),
     x_ver_os: Optional[str] = Header(default=None, alias="x-ver-os"),
-    x_device_model: Optional[str] = Header(default=None, alias="device-model"),
+    x_device_model: Optional[str] = Header(default=None, alias="x-device-model"),
 ):
     """Provides a subscription link based on the user agent (Clash, V2Ray, etc.)."""
     user: UserResponse = UserResponse.model_validate(dbuser)
