@@ -260,10 +260,10 @@ def user_subscription_with_client_type(
     client_type: str = Path(..., regex="sing-box|clash-meta|clash|outline|v2ray|v2ray-json"),
     db: Session = Depends(get_db),
     user_agent: str = Header(default=""),
-    x_hwid: Optional[str] = Header(default=None, alias="X-HWID"),
-    x_device_os: Optional[str] = Header(default=None, alias="X-Device-OS"),
-    x_ver_os: Optional[str] = Header(default=None, alias="X-Ver-OS"),
-    x_device_model: Optional[str] = Header(default=None, alias="X-Device-Model"),
+    x_hwid: Optional[str] = Header(default=None, alias="x-hwid"),
+    x_device_os: Optional[str] = Header(default=None, alias="x-device-os"),
+    x_ver_os: Optional[str] = Header(default=None, alias="x-ver-os"),
+    x_device_model: Optional[str] = Header(default=None, alias="x-device-model"),
 ):
     """Provides a subscription link based on the specified client type (e.g., Clash, V2Ray)."""
     user: UserResponse = UserResponse.model_validate(dbuser)
