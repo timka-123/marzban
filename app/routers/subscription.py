@@ -91,12 +91,14 @@ def check_hwid(
 
 def build_hwid_headers(allowed: bool, reason: str) -> dict:
     headers = {}
+
+    if reason == 'no_hwid':
+        headers['x-hwid-not-supported'] = 'true'
+
     if HWID_DEVICE_LIMIT_ENABLED:
         headers['x-hwid-active'] = 'true'
     if not allowed:
-        if reason == 'no_hwid':
-            headers['x-hwid-not-supported'] = 'true'
-        elif reason == 'limit_reached':
+        if reason == 'limit_reached':
             headers['x-hwid-max-devices-reached'] = 'true'
             if HWID_MAX_DEVICES_ANNOUNCE:
                 headers['announce'] = base64.b64encode(
