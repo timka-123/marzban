@@ -73,7 +73,7 @@ def check_hwid(
         return True, 'bypass'
 
     if not hwid:
-        return False, 'no_hwid'
+        return True, 'no_hwid'
 
     existing = crud.get_user_device_for_user(db, dbuser.id, hwid)
     if existing:
