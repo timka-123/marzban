@@ -63,9 +63,16 @@ def check_hwid(
       'known_device'      — device already registered, allow
       'new_device'        — new device registered, allow
       'limit_reached'     — device limit exceeded, block
+      'device_banned'     — device is banned for this user, block
     """
     if not HWID_DEVICE_LIMIT_ENABLED:
         return True, 'disabled'
+
+    existing = (
+        crud.get_user_device_for_user(db, dbuser.id, hwid) if hwid else None
+    )
+    if existing and existing.banned:
+        return False, 'device_banned'
 
     if dbuser.hwid_device_limit == 0:
         if hwid:
@@ -75,7 +82,6 @@ def check_hwid(
     if not hwid:
         return True, 'no_hwid'
 
-    existing = crud.get_user_device_for_user(db, dbuser.id, hwid)
     if existing:
         crud.upsert_user_device(db, dbuser.id, hwid, platform, os_version, device_model, user_agent)
         return True, 'known_device'
@@ -104,6 +110,9 @@ def build_hwid_headers(allowed: bool, reason: str) -> dict:
                 headers['announce'] = base64.b64encode(
                     HWID_MAX_DEVICES_ANNOUNCE.encode()
                 ).decode()
+        elif reason == 'device_banned':
+            headers['x-hwid-device-banned'] = 'true'
+            headers['announce'] = "This HWID is banned"
     return headers
 
 
