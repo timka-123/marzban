@@ -531,6 +531,11 @@ export const UsersTable: FC<UsersTableProps> = (props) => {
                 <HStack onClick={handleSort.bind(null, "expire")}>
                   <Text>Sort by expire</Text>
                 </HStack>
+                <Text>/</Text>
+                <Sort sort={filters.sort} column="devices" />
+                <HStack onClick={handleSort.bind(null, "devices")}>
+                  <Text>Sort by devices</Text>
+                </HStack>
                 <Select
                   fontSize="xs"
                   fontWeight="extrabold"
