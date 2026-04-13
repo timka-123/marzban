@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
-from sqlalchemy import and_, delete, func, or_
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Query, Session, joinedload
 from sqlalchemy.sql.functions import coalesce
 
@@ -208,17 +208,26 @@ def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return get_user_queryset(db).filter(User.id == user_id).first()
 
 
+_user_devices_count = (
+    select(func.count(UserDevice.hwid))
+    .where(UserDevice.user_id == User.id)
+    .correlate(User)
+    .scalar_subquery()
+)
+
 UsersSortingOptions = Enum('UsersSortingOptions', {
     'username': User.username.asc(),
     'used_traffic': User.used_traffic.asc(),
     'data_limit': User.data_limit.asc(),
     'expire': User.expire.asc(),
     'created_at': User.created_at.asc(),
+    'devices': _user_devices_count.asc(),
     '-username': User.username.desc(),
     '-used_traffic': User.used_traffic.desc(),
     '-data_limit': User.data_limit.desc(),
     '-expire': User.expire.desc(),
     '-created_at': User.created_at.desc(),
+    '-devices': _user_devices_count.desc(),
 })
 
 
