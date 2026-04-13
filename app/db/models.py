@@ -172,6 +172,8 @@ class UserDevice(Base):
     user_agent = Column(String(256), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    banned = Column(Boolean, default=False, nullable=False, server_default="False")
+    last_seen = Column(DateTime, default=datetime.utcnow)
 
 
 class NextPlan(Base):

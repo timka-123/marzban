@@ -76,6 +76,8 @@ export type UserDevice = {
   user_agent: string | null;
   created_at: string | null;
   updated_at: string | null;
+  banned: boolean;
+  last_seen: string | null;
 };
 
 export type UserApi = {

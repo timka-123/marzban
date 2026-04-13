@@ -1604,7 +1604,9 @@ def upsert_user_device(
         device.os_version = os_version or device.os_version
         device.device_model = device_model or device.device_model
         device.user_agent = user_agent or device.user_agent
-        device.updated_at = datetime.utcnow()
+        now = datetime.utcnow()
+        device.updated_at = now
+        device.last_seen = now
         db.commit()
         db.refresh(device)
         return device
@@ -1631,3 +1633,97 @@ def delete_all_user_devices(db: Session, user_id: int) -> int:
     count = db.query(UserDevice).filter(UserDevice.user_id == user_id).delete()
     db.commit()
     return count
+
+
+def set_user_device_banned(
+    db: Session, user_id: int, hwid: str, banned: bool
+) -> UserDevice | None:
+    device = db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+    if not device:
+        return None
+    device.banned = banned
+    db.commit()
+    db.refresh(device)
+    return device
+
+
+def ban_user_device(db: Session, user_id: int, hwid: str) -> UserDevice | None:
+    return set_user_device_banned(db, user_id, hwid, True)
+
+
+def unban_user_device(db: Session, user_id: int, hwid: str) -> UserDevice | None:
+    return set_user_device_banned(db, user_id, hwid, False)
+
+
+def ban_all_user_devices(db: Session, user_id: int) -> int:
+    count = db.query(UserDevice).filter(
+        UserDevice.user_id == user_id,
+        UserDevice.banned.is_(False),
+    ).update({UserDevice.banned: True}, synchronize_session=False)
+    db.commit()
+    return count
+
+
+def unban_all_user_devices(db: Session, user_id: int) -> int:
+    count = db.query(UserDevice).filter(
+        UserDevice.user_id == user_id,
+        UserDevice.banned.is_(True),
+    ).update({UserDevice.banned: False}, synchronize_session=False)
+    db.commit()
+    return count
+
+
+def get_banned_user_devices(db: Session, user_id: int) -> list[UserDevice]:
+    return db.query(UserDevice).filter(
+        UserDevice.user_id == user_id,
+        UserDevice.banned.is_(True),
+    ).all()
+
+
+def is_user_device_banned(db: Session, user_id: int, hwid: str) -> bool:
+    device = db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+    return bool(device and device.banned)
+
+
+def update_user_device_last_seen(
+    db: Session, user_id: int, hwid: str, last_seen: datetime | None = None
+) -> UserDevice | None:
+    device = db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+    if not device:
+        return None
+    device.last_seen = last_seen or datetime.utcnow()
+    db.commit()
+    db.refresh(device)
+    return device
+
+
+def touch_user_device(db: Session, user_id: int, hwid: str) -> UserDevice | None:
+    return update_user_device_last_seen(db, user_id, hwid)
+
+
+def get_user_device_last_seen(
+    db: Session, user_id: int, hwid: str
+) -> datetime | None:
+    device = db.query(UserDevice).filter(
+        UserDevice.hwid == hwid,
+        UserDevice.user_id == user_id,
+    ).first()
+    return device.last_seen if device else None
+
+
+def get_stale_user_devices(
+    db: Session, user_id: int, before: datetime
+) -> list[UserDevice]:
+    return db.query(UserDevice).filter(
+        UserDevice.user_id == user_id,
+        UserDevice.last_seen < before,
+    ).all()

@@ -71,6 +71,10 @@ type DashboardStateType = {
   fetchUserDevices: (user: User) => Promise<UserDevice[]>;
   deleteUserDevice: (user: User, hwid: string) => Promise<void>;
   deleteAllUserDevices: (user: User) => Promise<void>;
+  banUserDevice: (user: User, hwid: string) => Promise<UserDevice>;
+  unbanUserDevice: (user: User, hwid: string) => Promise<UserDevice>;
+  banAllUserDevices: (user: User) => Promise<void>;
+  unbanAllUserDevices: (user: User) => Promise<void>;
 };
 
 const fetchUsers = (query: FilterType): Promise<User[]> => {
@@ -225,6 +229,22 @@ export const useDashboard = create(
     },
     deleteAllUserDevices: (user: User) => {
       return fetch(`/user/${user.username}/devices`, { method: "DELETE" });
+    },
+    banUserDevice: (user: User, hwid: string) => {
+      return fetch(`/user/${user.username}/devices/${encodeURIComponent(hwid)}/ban`, {
+        method: "POST",
+      });
+    },
+    unbanUserDevice: (user: User, hwid: string) => {
+      return fetch(`/user/${user.username}/devices/${encodeURIComponent(hwid)}/unban`, {
+        method: "POST",
+      });
+    },
+    banAllUserDevices: (user: User) => {
+      return fetch(`/user/${user.username}/devices/ban`, { method: "POST" });
+    },
+    unbanAllUserDevices: (user: User) => {
+      return fetch(`/user/${user.username}/devices/unban`, { method: "POST" });
     },
   }))
 );

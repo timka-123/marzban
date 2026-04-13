@@ -41,7 +41,9 @@ import {
 } from "@chakra-ui/react";
 import {
   ChartPieIcon,
+  CheckCircleIcon,
   DevicePhoneMobileIcon,
+  NoSymbolIcon,
   PencilIcon,
   TrashIcon,
   UserPlusIcon,
@@ -102,6 +104,20 @@ const DevicesIcon = chakra(DevicePhoneMobileIcon, {
 });
 
 const TrashIconSmall = chakra(TrashIcon, {
+  baseStyle: {
+    w: 4,
+    h: 4,
+  },
+});
+
+const BanIconSmall = chakra(NoSymbolIcon, {
+  baseStyle: {
+    w: 4,
+    h: 4,
+  },
+});
+
+const UnbanIconSmall = chakra(CheckCircleIcon, {
   baseStyle: {
     w: 4,
     h: 4,
@@ -254,6 +270,10 @@ export const UserDialog: FC<UserDialogProps> = () => {
     fetchUserDevices,
     deleteUserDevice,
     deleteAllUserDevices,
+    banUserDevice,
+    unbanUserDevice,
+    banAllUserDevices,
+    unbanAllUserDevices,
   } = useDashboard();
   const isEditing = !!editingUser;
   const isOpen = isCreatingNewUser || isEditing;
@@ -294,6 +314,30 @@ export const UserDialog: FC<UserDialogProps> = () => {
     if (!editingUser) return;
     deleteAllUserDevices(editingUser).then(() => {
       setDevices([]);
+    });
+  };
+
+  const handleToggleBanDevice = (device: UserDevice) => {
+    if (!editingUser) return;
+    const action = device.banned ? unbanUserDevice : banUserDevice;
+    action(editingUser, device.hwid).then((updated) => {
+      setDevices((prev) =>
+        prev.map((d) => (d.hwid === device.hwid ? updated : d))
+      );
+    });
+  };
+
+  const handleBanAllDevices = () => {
+    if (!editingUser) return;
+    banAllUserDevices(editingUser).then(() => {
+      setDevices((prev) => prev.map((d) => ({ ...d, banned: true })));
+    });
+  };
+
+  const handleUnbanAllDevices = () => {
+    if (!editingUser) return;
+    unbanAllUserDevices(editingUser).then(() => {
+      setDevices((prev) => prev.map((d) => ({ ...d, banned: false })));
     });
   };
 
@@ -866,16 +910,44 @@ export const UserDialog: FC<UserDialogProps> = () => {
                       <Text fontWeight="semibold" fontSize="sm">
                         {t("userDialog.hwidDevices")}
                       </Text>
-                      <Button
-                        size="xs"
-                        colorScheme="red"
-                        variant="outline"
-                        leftIcon={<TrashIconSmall />}
-                        onClick={handleClearDevices}
-                        isDisabled={devices.length === 0}
-                      >
-                        {t("userDialog.clearDevices")}
-                      </Button>
+                      <HStack spacing={2}>
+                        <Button
+                          size="xs"
+                          colorScheme="orange"
+                          variant="outline"
+                          leftIcon={<BanIconSmall />}
+                          onClick={handleBanAllDevices}
+                          isDisabled={
+                            devices.length === 0 ||
+                            devices.every((d) => d.banned)
+                          }
+                        >
+                          {t("userDialog.banAll")}
+                        </Button>
+                        <Button
+                          size="xs"
+                          colorScheme="green"
+                          variant="outline"
+                          leftIcon={<UnbanIconSmall />}
+                          onClick={handleUnbanAllDevices}
+                          isDisabled={
+                            devices.length === 0 ||
+                            devices.every((d) => !d.banned)
+                          }
+                        >
+                          {t("userDialog.unbanAll")}
+                        </Button>
+                        <Button
+                          size="xs"
+                          colorScheme="red"
+                          variant="outline"
+                          leftIcon={<TrashIconSmall />}
+                          onClick={handleClearDevices}
+                          isDisabled={devices.length === 0}
+                        >
+                          {t("userDialog.clearDevices")}
+                        </Button>
+                      </HStack>
                     </HStack>
                     {devicesLoading ? (
                       <Flex justify="center" py={4}>
@@ -902,12 +974,17 @@ export const UserDialog: FC<UserDialogProps> = () => {
                               <Th>HWID</Th>
                               <Th>{t("userDialog.platform")}</Th>
                               <Th>{t("userDialog.deviceModel")}</Th>
+                              <Th>{t("userDialog.lastSeen")}</Th>
+                              <Th>{t("userDialog.status")}</Th>
                               <Th />
                             </Tr>
                           </Thead>
                           <Tbody>
                             {devices.map((device) => (
-                              <Tr key={device.hwid}>
+                              <Tr
+                                key={device.hwid}
+                                opacity={device.banned ? 0.6 : 1}
+                              >
                                 <Td>
                                   <Tooltip label={device.hwid} placement="top">
                                     <Badge
@@ -930,23 +1007,86 @@ export const UserDialog: FC<UserDialogProps> = () => {
                                     : ""}
                                 </Td>
                                 <Td>{device.device_model ?? "—"}</Td>
-                                <Td isNumeric>
-                                  <Tooltip
-                                    label={t("userDialog.deleteDevice")}
-                                    placement="top"
-                                  >
-                                    <IconButton
-                                      aria-label="delete device"
-                                      size="xs"
-                                      variant="ghost"
-                                      colorScheme="red"
-                                      onClick={() =>
-                                        handleDeleteDevice(device.hwid)
-                                      }
+                                <Td>
+                                  {device.last_seen ? (
+                                    <Tooltip
+                                      label={dayjs
+                                        .utc(device.last_seen)
+                                        .local()
+                                        .format("YYYY-MM-DD HH:mm:ss")}
+                                      placement="top"
                                     >
-                                      <TrashIconSmall />
-                                    </IconButton>
-                                  </Tooltip>
+                                      <Text as="span">
+                                        {dayjs
+                                          .utc(device.last_seen)
+                                          .local()
+                                          .fromNow()}
+                                      </Text>
+                                    </Tooltip>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </Td>
+                                <Td>
+                                  {device.banned ? (
+                                    <Badge colorScheme="red">
+                                      {t("userDialog.banned")}
+                                    </Badge>
+                                  ) : (
+                                    <Badge colorScheme="green">
+                                      {t("userDialog.active")}
+                                    </Badge>
+                                  )}
+                                </Td>
+                                <Td isNumeric>
+                                  <HStack spacing={1} justify="flex-end">
+                                    <Tooltip
+                                      label={
+                                        device.banned
+                                          ? t("userDialog.unbanDevice")
+                                          : t("userDialog.banDevice")
+                                      }
+                                      placement="top"
+                                    >
+                                      <IconButton
+                                        aria-label={
+                                          device.banned
+                                            ? "unban device"
+                                            : "ban device"
+                                        }
+                                        size="xs"
+                                        variant="ghost"
+                                        colorScheme={
+                                          device.banned ? "green" : "orange"
+                                        }
+                                        onClick={() =>
+                                          handleToggleBanDevice(device)
+                                        }
+                                      >
+                                        {device.banned ? (
+                                          <UnbanIconSmall />
+                                        ) : (
+                                          <BanIconSmall />
+                                        )}
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip
+                                      label={t("userDialog.deleteDevice")}
+                                      placement="top"
+                                    >
+                                      <IconButton
+                                        aria-label="delete device"
+                                        size="xs"
+                                        variant="ghost"
+                                        colorScheme="red"
+                                        onClick={() =>
+                                          handleDeleteDevice(device.hwid)
+                                        }
+                                      >
+                                        <TrashIconSmall />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </HStack>
                                 </Td>
                               </Tr>
                             ))}
