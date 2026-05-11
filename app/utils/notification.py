@@ -24,6 +24,7 @@ class Notification(BaseModel):
         data_usage_reset = "data_usage_reset"
         data_reset_by_next = "data_reset_by_next"
         subscription_revoked = "subscription_revoked"
+        new_device = "new_device"
 
         reached_usage_percent = "reached_usage_percent"
         reached_days_left = "reached_days_left"
@@ -35,6 +36,15 @@ class Notification(BaseModel):
 
 class UserNotification(Notification):
     username: str
+
+
+class NewDevice(UserNotification):
+    action: Notification.Type = Notification.Type.new_device
+    hwid: str
+    device_os: str
+    os_version: str
+    device_model: str
+    user_agent: str
 
 
 class ReachedUsagePercent(UserNotification):

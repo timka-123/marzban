@@ -88,6 +88,7 @@ NOTIFY_USER_SUB_REVOKED = config("NOTIFY_USER_SUB_REVOKED", default=True, cast=b
 NOTIFY_IF_DATA_USAGE_PERCENT_REACHED = config("NOTIFY_IF_DATA_USAGE_PERCENT_REACHED", default=True, cast=bool)
 NOTIFY_IF_DAYS_LEFT_REACHED = config("NOTIFY_IF_DAYS_LEFT_REACHED", default=True, cast=bool)
 NOTIFY_LOGIN = config("NOTIFY_LOGIN", default=True, cast=bool)
+NOTIFY_NEW_DEVICES = config("NOTIFY_NEW_DEVICES", default=True, cast=bool)
 
 ACTIVE_STATUS_TEXT = config("ACTIVE_STATUS_TEXT", default="Active")
 EXPIRED_STATUS_TEXT = config("EXPIRED_STATUS_TEXT", default="Expired")

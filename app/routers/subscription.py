@@ -1,5 +1,6 @@
 import base64
 import re
+from app.utils.notification import NewDevice, Notification, notify
 from distutils.version import LooseVersion
 from typing import Optional, Tuple
 import logging
@@ -92,6 +93,14 @@ def check_hwid(
         return False, 'limit_reached'
 
     crud.insert_user_device(db, dbuser.id, hwid, platform, os_version, device_model, user_agent)
+    notify(NewDevice(
+        hwid=hwid,
+        device_os=platform,  # todo: review it again
+        os_version=os_version,
+        device_model=device_model,
+        user_agent=user_agent,
+        action=Notification.Type.new_device
+    ))
     return True, 'new_device'
 
 
