@@ -409,10 +409,13 @@ class MihomoConfiguration(ClashMetaConfiguration):
             random_user_agent: bool = False,
             sc_max_each_post_bytes: int | None = None,
             sc_min_posts_interval_ms: int | None = None,
+            sc_max_buffered_posts: int | None = None,
             x_padding_bytes: str | None = None,
             no_grpc_header: bool | None = None,
+            no_sse_header: bool | None = None,
             xmux: dict | None = None,
             download_settings: dict | None = None,
+            xhttp_headers: dict | None = None,
     ):
         config = copy.deepcopy(self.settings.get("xhttp-opts", {}))
         if path:
@@ -423,14 +426,20 @@ class MihomoConfiguration(ClashMetaConfiguration):
             config["mode"] = mode
         if random_user_agent:
             config.setdefault("headers", {})["User-Agent"] = choice(self.user_agent_list)
+        if xhttp_headers:
+            config.setdefault("headers", {}).update(xhttp_headers)
         if sc_max_each_post_bytes is not None:
             config["sc-max-each-post-bytes"] = sc_max_each_post_bytes
         if sc_min_posts_interval_ms is not None:
             config["sc-min-posts-interval-ms"] = sc_min_posts_interval_ms
+        if sc_max_buffered_posts is not None:
+            config["sc-max-buffered-posts"] = sc_max_buffered_posts
         if x_padding_bytes is not None:
             config["x-padding-bytes"] = x_padding_bytes
         if no_grpc_header is not None:
             config["no-grpc-header"] = no_grpc_header
+        if no_sse_header is not None:
+            config["no-sse-header"] = no_sse_header
         if xmux:
             config["reuse-settings"] = xmux
         if download_settings:
@@ -461,10 +470,13 @@ class MihomoConfiguration(ClashMetaConfiguration):
                   mode: str = '',
                   sc_max_each_post_bytes: int | None = None,
                   sc_min_posts_interval_ms: int | None = None,
+                  sc_max_buffered_posts: int | None = None,
                   x_padding_bytes: str | None = None,
                   no_grpc_header: bool | None = None,
+                  no_sse_header: bool | None = None,
                   xmux: dict | None = None,
-                  download_settings: dict | None = None):
+                  download_settings: dict | None = None,
+                  xhttp_headers: dict | None = None):
 
         if network != "xhttp":
             return super().make_node(
@@ -516,10 +528,13 @@ class MihomoConfiguration(ClashMetaConfiguration):
             random_user_agent=random_user_agent,
             sc_max_each_post_bytes=sc_max_each_post_bytes,
             sc_min_posts_interval_ms=sc_min_posts_interval_ms,
+            sc_max_buffered_posts=sc_max_buffered_posts,
             x_padding_bytes=x_padding_bytes,
             no_grpc_header=no_grpc_header,
+            no_sse_header=no_sse_header,
             xmux=xmux,
             download_settings=download_settings,
+            xhttp_headers=xhttp_headers,
         )
 
         if fp:
@@ -563,10 +578,13 @@ class MihomoConfiguration(ClashMetaConfiguration):
             mode=inbound.get("mode", "auto"),
             sc_max_each_post_bytes=inbound.get("scMaxEachPostBytes"),
             sc_min_posts_interval_ms=inbound.get("scMinPostsIntervalMs"),
+            sc_max_buffered_posts=inbound.get("scMaxBufferedPosts"),
             x_padding_bytes=inbound.get("xPaddingBytes"),
             no_grpc_header=inbound.get("noGRPCHeader"),
+            no_sse_header=inbound.get("noSSEHeader"),
             xmux=inbound.get("xmux") or None,
             download_settings=inbound.get("downloadSettings") or None,
+            xhttp_headers=inbound.get("xhttpHeaders") or None,
         )
 
         node['uuid'] = settings['id']

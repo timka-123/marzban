@@ -297,23 +297,35 @@ class XRayConfig(dict):
                     settings['path'] = net_settings.get('path', '')
                     host = net_settings.get('host', '')
                     settings['host'] = [host]
-                    settings['scMaxEachPostBytes'] = net_settings.get(
-                        'scMaxEachPostBytes')
-                    settings['scMaxConcurrentPosts'] = net_settings.get(
-                        'scMaxConcurrentPosts')
-                    settings['scMinPostsIntervalMs'] = net_settings.get(
-                        'scMinPostsIntervalMs')
-                    settings['xPaddingBytes'] = net_settings.get(
-                        'xPaddingBytes')
-                    settings["noGRPCHeader"] = net_settings.get("noGRPCHeader")
-                    settings['xmux'] = net_settings.get('xmux', {})
-                    settings['downloadSettings'] = net_settings.get(
-                        'downloadSettings', {})
                     settings["mode"] = net_settings.get("mode", "auto")
-                    settings["keepAlivePeriod"] = net_settings.get(
-                        "keepAlivePeriod", 0)
-                    settings["scStreamUpServerSecs"] = net_settings.get(
-                        "scStreamUpServerSecs")
+
+                    # In modern xhttp the tuning options live under `extra`;
+                    # legacy splithttp put them at the top level. Read both,
+                    # with `extra` winning when present.
+                    extra = net_settings.get('extra') or {}
+                    if isinstance(extra, str):
+                        try:
+                            extra = json.loads(extra)
+                        except (ValueError, TypeError):
+                            extra = {}
+
+                    def _pick(key, default=None):
+                        if key in extra:
+                            return extra.get(key)
+                        return net_settings.get(key, default)
+
+                    settings['scMaxEachPostBytes'] = _pick('scMaxEachPostBytes')
+                    settings['scMaxConcurrentPosts'] = _pick('scMaxConcurrentPosts')
+                    settings['scMinPostsIntervalMs'] = _pick('scMinPostsIntervalMs')
+                    settings['scMaxBufferedPosts'] = _pick('scMaxBufferedPosts')
+                    settings['xPaddingBytes'] = _pick('xPaddingBytes')
+                    settings['noGRPCHeader'] = _pick('noGRPCHeader')
+                    settings['noSSEHeader'] = _pick('noSSEHeader')
+                    settings['xmux'] = _pick('xmux', {}) or {}
+                    settings['downloadSettings'] = _pick('downloadSettings', {}) or {}
+                    settings['keepAlivePeriod'] = _pick('keepAlivePeriod', 0) or 0
+                    settings['scStreamUpServerSecs'] = _pick('scStreamUpServerSecs')
+                    settings['xhttpHeaders'] = _pick('headers', {}) or {}
 
                 elif net == 'kcp':
                     header = net_settings.get('header', {})
