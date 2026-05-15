@@ -34,6 +34,7 @@ from config import (
 
 client_config = {
     "clash-meta": {"config_format": "clash-meta", "media_type": "text/yaml", "as_base64": False, "reverse": False},
+    "mihomo": {"config_format": "mihomo", "media_type": "text/yaml", "as_base64": False, "reverse": False},
     "sing-box": {"config_format": "sing-box", "media_type": "application/json", "as_base64": False, "reverse": False},
     "clash": {"config_format": "clash", "media_type": "text/yaml", "as_base64": False, "reverse": False},
     "v2ray": {"config_format": "v2ray", "media_type": "text/plain", "as_base64": True, "reverse": False},
@@ -181,8 +182,8 @@ def user_subscription(
         **hwid_headers,
     }
 
-    if re.match(r'^([Cc]lash-verge|[Cc]lash[-\.]?[Mm]eta|[Ff][Ll][Cc]lash|[Mm]ihomo)', user_agent):
-        conf = generate_subscription(user=user, config_format="clash-meta", as_base64=False, reverse=False)
+    if re.match(r'^([Mm]ihomo|[Cc]lash[-\.]?[Mm]eta|[Cc]lash-verge|[Ff][Ll][Cc]lash)|[Aa]toll', user_agent):
+        conf = generate_subscription(user=user, config_format="mihomo", as_base64=False, reverse=False)
         return Response(content=conf, media_type="text/yaml", headers=response_headers)
 
     elif re.match(r'^([Cc]lash|[Ss]tash)', user_agent):
@@ -275,7 +276,7 @@ def user_get_usage(
 def user_subscription_with_client_type(
     request: Request,
     dbuser: UserResponse = Depends(get_validated_sub),
-    client_type: str = Path(..., regex="sing-box|clash-meta|clash|outline|v2ray|v2ray-json"),
+    client_type: str = Path(..., regex="sing-box|clash-meta|mihomo|clash|outline|v2ray|v2ray-json"),
     db: Session = Depends(get_db),
     user_agent: str = Header(default=""),
     x_hwid: Optional[str] = Header(default=None, alias="x-hwid"),

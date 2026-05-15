@@ -1,7 +1,7 @@
 from .v2ray import V2rayJsonConfig, V2rayShareLink
 from .singbox import SingBoxConfiguration
 from .outline import OutlineConfiguration
-from .clash import ClashConfiguration, ClashMetaConfiguration
+from .clash import ClashConfiguration, ClashMetaConfiguration, MihomoConfiguration
 
 __all__ = [
     "V2rayJsonConfig",
@@ -10,4 +10,5 @@ __all__ = [
     "OutlineConfiguration",
     "ClashConfiguration",
     "ClashMetaConfiguration",
+    "MihomoConfiguration",
 ]

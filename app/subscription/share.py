@@ -65,6 +65,17 @@ def generate_clash_subscription(
     )
 
 
+def generate_mihomo_subscription(
+        proxies: dict, inbounds: dict, extra_data: dict, reverse: bool,
+) -> str:
+    conf = MihomoConfiguration()
+
+    format_variables = setup_format_variables(extra_data)
+    return process_inbounds_and_tags(
+        inbounds, proxies, format_variables, conf=conf, reverse=reverse
+    )
+
+
 def generate_singbox_subscription(
         proxies: dict, inbounds: dict, extra_data: dict, reverse: bool
 ) -> str:
@@ -100,7 +111,7 @@ def generate_v2ray_json_subscription(
 
 def generate_subscription(
         user: "UserResponse",
-        config_format: Literal["v2ray", "clash-meta", "clash", "sing-box", "outline", "v2ray-json"],
+        config_format: Literal["v2ray", "clash-meta", "clash", "sing-box", "outline", "v2ray-json", "mihomo"],
         as_base64: bool,
         reverse: bool,
 ) -> str:
@@ -117,6 +128,8 @@ def generate_subscription(
         config = generate_clash_subscription(**kwargs, is_meta=True)
     elif config_format == "clash":
         config = generate_clash_subscription(**kwargs)
+    elif config_format == "mihomo":
+        config = generate_mihomo_subscription(**kwargs)
     elif config_format == "sing-box":
         config = generate_singbox_subscription(**kwargs)
     elif config_format == "outline":
@@ -253,6 +266,7 @@ def process_inbounds_and_tags(
             SingBoxConfiguration,
             ClashConfiguration,
             ClashMetaConfiguration,
+            MihomoConfiguration,
             OutlineConfiguration
         ],
         reverse=False,

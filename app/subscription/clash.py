@@ -396,3 +396,180 @@ class ClashMetaConfiguration(ClashConfiguration):
 
         self.data['proxies'].append(node)
         self.proxy_remarks.append(proxy_remark)
+
+
+class MihomoConfiguration(ClashMetaConfiguration):
+    """Mihomo (clash-meta successor) — supports xhttp transport for VLESS."""
+
+    def xhttp_config(
+            self,
+            path: str = "",
+            host: str = "",
+            mode: str = "",
+            random_user_agent: bool = False,
+            sc_max_each_post_bytes: int | None = None,
+            sc_min_posts_interval_ms: int | None = None,
+            x_padding_bytes: str | None = None,
+            no_grpc_header: bool | None = None,
+            xmux: dict | None = None,
+            download_settings: dict | None = None,
+    ):
+        config = copy.deepcopy(self.settings.get("xhttp-opts", {}))
+        if path:
+            config["path"] = path
+        if host:
+            config["host"] = host
+        if mode:
+            config["mode"] = mode
+        if random_user_agent:
+            config.setdefault("headers", {})["User-Agent"] = choice(self.user_agent_list)
+        if sc_max_each_post_bytes is not None:
+            config["sc-max-each-post-bytes"] = sc_max_each_post_bytes
+        if sc_min_posts_interval_ms is not None:
+            config["sc-min-posts-interval-ms"] = sc_min_posts_interval_ms
+        if x_padding_bytes is not None:
+            config["x-padding-bytes"] = x_padding_bytes
+        if no_grpc_header is not None:
+            config["no-grpc-header"] = no_grpc_header
+        if xmux:
+            config["reuse-settings"] = xmux
+        if download_settings:
+            config["download-settings"] = download_settings
+
+        return config
+
+    def make_node(self,
+                  name: str,
+                  remark: str,
+                  type: str,
+                  server: str,
+                  port: int,
+                  network: str,
+                  tls: bool,
+                  sni: str,
+                  host: str,
+                  path: str,
+                  headers: str = '',
+                  udp: bool = True,
+                  alpn: str = '',
+                  fp: str = '',
+                  pbk: str = '',
+                  sid: str = '',
+                  ais: bool = '',
+                  mux_enable: bool = False,
+                  random_user_agent: bool = False,
+                  mode: str = '',
+                  sc_max_each_post_bytes: int | None = None,
+                  sc_min_posts_interval_ms: int | None = None,
+                  x_padding_bytes: str | None = None,
+                  no_grpc_header: bool | None = None,
+                  xmux: dict | None = None,
+                  download_settings: dict | None = None):
+
+        if network != "xhttp":
+            return super().make_node(
+                name=name,
+                remark=remark,
+                type=type,
+                server=server,
+                port=port,
+                network=network,
+                tls=tls,
+                sni=sni,
+                host=host,
+                path=path,
+                headers=headers,
+                udp=udp,
+                alpn=alpn,
+                fp=fp,
+                pbk=pbk,
+                sid=sid,
+                ais=ais,
+                mux_enable=mux_enable,
+                random_user_agent=random_user_agent,
+            )
+
+        node = {
+            'name': remark,
+            'type': type,
+            'server': server,
+            'port': port,
+            'network': 'xhttp',
+            'udp': udp,
+        }
+
+        if tls:
+            node['tls'] = True
+            if type == 'trojan':
+                node['sni'] = sni
+            else:
+                node['servername'] = sni
+            if alpn:
+                node['alpn'] = alpn.split(',')
+            if ais:
+                node['skip-cert-verify'] = ais
+
+        node['xhttp-opts'] = self.xhttp_config(
+            path=path,
+            host=host,
+            mode=mode,
+            random_user_agent=random_user_agent,
+            sc_max_each_post_bytes=sc_max_each_post_bytes,
+            sc_min_posts_interval_ms=sc_min_posts_interval_ms,
+            x_padding_bytes=x_padding_bytes,
+            no_grpc_header=no_grpc_header,
+            xmux=xmux,
+            download_settings=download_settings,
+        )
+
+        if fp:
+            node['client-fingerprint'] = fp
+        if pbk:
+            node['reality-opts'] = {"public-key": pbk, "short-id": sid}
+
+        mux_json = json.loads(self.mux_template)
+        if mux_enable:
+            node['smux'] = mux_json["clash"]
+
+        return node
+
+    def add(self, remark: str, address: str, inbound: dict, settings: dict):
+        # mihomo supports xhttp only for vless; fall back to clash-meta for everything else.
+        if inbound['network'] != 'xhttp' or inbound['protocol'] != 'vless':
+            return super().add(remark, address, inbound, settings)
+
+        proxy_remark = self._remark_validation(remark)
+
+        node = self.make_node(
+            name=remark,
+            remark=proxy_remark,
+            type=inbound['protocol'],
+            server=address,
+            port=inbound['port'],
+            network=inbound['network'],
+            tls=(inbound['tls'] in ('tls', 'reality')),
+            sni=inbound['sni'],
+            host=inbound['host'],
+            path=inbound['path'],
+            headers=inbound['header_type'],
+            udp=True,
+            alpn=inbound.get('alpn', ''),
+            fp=inbound.get('fp', ''),
+            pbk=inbound.get('pbk', ''),
+            sid=inbound.get('sid', ''),
+            ais=inbound.get('ais', False),
+            mux_enable=inbound.get('mux_enable', False),
+            random_user_agent=inbound.get("random_user_agent"),
+            mode=inbound.get("mode", "auto"),
+            sc_max_each_post_bytes=inbound.get("scMaxEachPostBytes"),
+            sc_min_posts_interval_ms=inbound.get("scMinPostsIntervalMs"),
+            x_padding_bytes=inbound.get("xPaddingBytes"),
+            no_grpc_header=inbound.get("noGRPCHeader"),
+            xmux=inbound.get("xmux") or None,
+            download_settings=inbound.get("downloadSettings") or None,
+        )
+
+        node['uuid'] = settings['id']
+
+        self.data['proxies'].append(node)
+        self.proxy_remarks.append(proxy_remark)
