@@ -100,7 +100,8 @@ def check_hwid(
         os_version=os_version,
         device_model=device_model,
         user_agent=user_agent,
-        action=Notification.Type.new_device
+        action=Notification.Type.new_device,
+        username=dbuser.username
     ))
     return True, 'new_device'
 
