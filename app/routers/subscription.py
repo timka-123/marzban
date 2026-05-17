@@ -13,11 +13,11 @@ from app.dependencies import get_validated_sub, validate_dates
 from app.models.user import SubscriptionUserResponse, UserResponse
 from app.subscription.share import encode_title, generate_subscription
 from app.templates import render_template
+from app.utils.settings import get_panel_setting
 from config import (
     HWID_DEVICE_LIMIT_ENABLED,
     HWID_FALLBACK_DEVICE_LIMIT,
     HWID_MAX_DEVICES_ANNOUNCE,
-    SUB_ANNOUNCE,
     SUB_ANNOUNCE,
     SUB_PROFILE_TITLE,
     SUB_SUPPORT_URL,
@@ -169,11 +169,10 @@ def user_subscription(
 
     crud.update_user_sub(db, dbuser, user_agent)
     response_headers = {
-        "announce": SUB_ANNOUNCE,
         "content-disposition": f'attachment; filename="{user.username}"',
         "profile-web-page-url": str(request.url),
         "support-url": SUB_SUPPORT_URL,
-        "announce": SUB_ANNOUNCE,
+        "announce": get_panel_setting("SUB_ANNOUNCE", default=SUB_ANNOUNCE),
         "profile-title": encode_title(SUB_PROFILE_TITLE),
         "profile-update-interval": SUB_UPDATE_INTERVAL,
         "subscription-userinfo": "; ".join(
@@ -295,11 +294,10 @@ def user_subscription_with_client_type(
         return Response(content="", media_type="text/plain", headers=hwid_headers)
 
     response_headers = {
-        "announce": SUB_ANNOUNCE,
         "content-disposition": f'attachment; filename="{user.username}"',
         "profile-web-page-url": str(request.url),
         "support-url": SUB_SUPPORT_URL,
-        "announce": SUB_ANNOUNCE,
+        "announce": get_panel_setting("SUB_ANNOUNCE", default=SUB_ANNOUNCE),
         "profile-title": encode_title(SUB_PROFILE_TITLE),
         "profile-update-interval": SUB_UPDATE_INTERVAL,
         "subscription-userinfo": "; ".join(

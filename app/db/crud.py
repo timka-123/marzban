@@ -24,6 +24,7 @@ from app.db.models import (
     ProxyHost,
     ProxyInbound,
     ProxyTypes,
+    Setting,
     System,
     User,
     UserDevice,
@@ -1727,3 +1728,40 @@ def get_stale_user_devices(
         UserDevice.user_id == user_id,
         UserDevice.last_seen < before,
     ).all()
+
+
+def get_setting(db: Session, key: str) -> Optional[Setting]:
+    return db.query(Setting).filter(Setting.key == key).first()
+
+
+def get_all_settings(db: Session) -> List[Setting]:
+    return db.query(Setting).all()
+
+
+def set_setting(db: Session, key: str, value) -> Setting:
+    setting = db.query(Setting).filter(Setting.key == key).first()
+    if setting is None:
+        setting = Setting(key=key, value=value)
+        db.add(setting)
+    else:
+        setting.value = value
+    db.commit()
+    db.refresh(setting)
+
+    from app.utils.settings import invalidate_cache
+    invalidate_cache()
+
+    return setting
+
+
+def delete_setting(db: Session, key: str) -> bool:
+    setting = db.query(Setting).filter(Setting.key == key).first()
+    if setting is None:
+        return False
+    db.delete(setting)
+    db.commit()
+
+    from app.utils.settings import invalidate_cache
+    invalidate_cache()
+
+    return True
