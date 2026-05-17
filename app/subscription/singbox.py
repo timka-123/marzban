@@ -307,7 +307,7 @@ class SingBoxConfiguration(str):
             port=inbound['port'],
             net=net,
             tls=(inbound['tls']),
-            flow=settings.get('flow', ''),
+            flow=inbound.get('flow', settings.get('flow', '')),
             sni=inbound['sni'],
             host=inbound['host'],
             path=path,

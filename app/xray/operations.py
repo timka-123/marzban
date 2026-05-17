@@ -90,6 +90,9 @@ def add_user(dbuser: "DBUser"):
                 pass
             account = proxy_type.account_model(email=email, **proxy_settings)
 
+            if 'flow' in inbound and hasattr(account, 'flow'):
+                account.flow = XTLSFlows(inbound['flow']) if inbound['flow'] else XTLSFlows.NONE
+
             if getattr(account, 'flow', None) and (
                 inbound.get('network', 'tcp') not in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp')
                 or
@@ -134,6 +137,9 @@ def update_user(dbuser: "DBUser"):
             except KeyError:
                 pass
             account = proxy_type.account_model(email=email, **proxy_settings)
+
+            if 'flow' in inbound and hasattr(account, 'flow'):
+                account.flow = XTLSFlows(inbound['flow']) if inbound['flow'] else XTLSFlows.NONE
 
             if getattr(account, 'flow', None) and (
                 inbound.get('network', 'tcp') not in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp')

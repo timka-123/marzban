@@ -166,6 +166,12 @@ class XRayConfig(dict):
                 "is_fallback": False
             }
 
+            # Inbound-level `flow` overrides per-user flow for all clients on
+            # this inbound. It is a Marzban-only key — pop it so xray-core
+            # never sees the unknown field.
+            if 'flow' in inbound:
+                settings['flow'] = inbound.pop('flow')
+
             # port settings
             try:
                 settings['port'] = inbound['port']
@@ -432,6 +438,9 @@ class XRayConfig(dict):
                             "email": f"{user_id}.{username}",
                             **settings
                         }
+
+                        if 'flow' in inbound:
+                            client['flow'] = inbound['flow']
 
                         if client.get('flow') and (
                                 inbound.get('network', 'tcp') not in (

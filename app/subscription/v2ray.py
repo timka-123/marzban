@@ -94,7 +94,7 @@ class V2rayShareLink(str):
                 address=address,
                 port=inbound["port"],
                 id=settings["id"],
-                flow=settings.get("flow", ""),
+                flow=inbound.get("flow", settings.get("flow", "")),
                 net=net,
                 tls=inbound["tls"],
                 sni=inbound.get("sni", ""),
@@ -131,7 +131,7 @@ class V2rayShareLink(str):
                 address=address,
                 port=inbound["port"],
                 password=settings["password"],
-                flow=settings.get("flow", ""),
+                flow=inbound.get("flow", settings.get("flow", "")),
                 net=net,
                 tls=inbound["tls"],
                 sni=inbound.get("sni", ""),
@@ -1128,7 +1128,7 @@ class V2rayJsonConfig(str):
 
         elif inbound['protocol'] == 'vless':
             if net in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp') and headers != 'http' and tls in ('tls', 'reality'):
-                flow = settings.get('flow', '')
+                flow = inbound.get('flow', settings.get('flow', ''))
             else:
                 flow = None
 
