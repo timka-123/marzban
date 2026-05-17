@@ -336,7 +336,7 @@ class V2rayShareLink(str):
             "type": net,
             "headerType": type
         }
-        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp') and type != 'http'):
+        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp') and type != 'http'):
             payload['flow'] = flow
 
         if net == 'grpc':
@@ -464,7 +464,7 @@ class V2rayShareLink(str):
             "type": net,
             "headerType": type
         }
-        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp') and type != 'http'):
+        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp') and type != 'http'):
             payload['flow'] = flow
 
         if net == 'grpc':
@@ -1127,7 +1127,7 @@ class V2rayJsonConfig(str):
                                                      id=settings['id'])
 
         elif inbound['protocol'] == 'vless':
-            if net in ('tcp', 'raw', 'kcp') and headers != 'http' and tls in ('tls', 'reality'):
+            if net in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp') and headers != 'http' and tls in ('tls', 'reality'):
                 flow = settings.get('flow', '')
             else:
                 flow = None

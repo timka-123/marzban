@@ -381,7 +381,7 @@ class ClashMetaConfiguration(ClashConfiguration):
         elif inbound['protocol'] == 'vless':
             node['uuid'] = settings['id']
 
-            if inbound['network'] in ('tcp', 'raw', 'kcp') and inbound['header_type'] != 'http' and inbound['tls'] != 'none':
+            if inbound['network'] in ('tcp', 'raw', 'kcp', 'xhttp', 'splithttp') and inbound['header_type'] != 'http' and inbound['tls'] != 'none':
                 node['flow'] = settings.get('flow', '')
 
         elif inbound['protocol'] == 'trojan':

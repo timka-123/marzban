@@ -433,14 +433,13 @@ class XRayConfig(dict):
                             **settings
                         }
 
-                        # XTLS currently only supports transmission methods of TCP and mKCP
                         if client.get('flow') and (
                                 inbound.get('network', 'tcp') not in (
-                                    'tcp', 'raw', 'kcp')
+                                    'tcp', 'raw', 'kcp', 'xhttp', 'splithttp')
                                 or
                                 (
                                     inbound.get('network', 'tcp') in (
-                                        'tcp', 'raw', 'kcp')
+                                        'tcp', 'raw', 'kcp', 'xhttp', 'splithttp')
                                     and
                                     inbound.get('tls') not in (
                                         'tls', 'reality')
